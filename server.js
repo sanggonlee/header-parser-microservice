@@ -2,15 +2,10 @@
 
 var express = require('express');
 var routes = require('./app/routes/index.js');
-var mongoose = require('mongoose');
-var passport = require('passport');
 var session = require('express-session');
 
 var app = express();
 require('dotenv').load();
-require('./app/config/passport')(passport);
-
-mongoose.connect(process.env.MONGO_URI);
 
 app.use('/controllers', express.static(process.cwd() + '/app/controllers'));
 app.use('/public', express.static(process.cwd() + '/public'));
@@ -22,10 +17,22 @@ app.use(session({
 	saveUninitialized: true
 }));
 
-app.use(passport.initialize());
-app.use(passport.session());
+routes(app);
 
-routes(app, passport);
+app.get('/api/whoami', function(req, res) {
+	var ipaddress = req.headers['x-forwarded-for'] || 
+		req.connection.remoteAddress || 
+     	req.socket.remoteAddress ||
+     	req.connection.socket.remoteAddress;
+    var userLanguage = req.headers["accept-language"].replace(/,(.*)/, "");
+    var osMatch = req.headers['user-agent'].match(/\(([^\(\)]*)\)/);
+    var userOS = osMatch ? osMatch[1] : null;
+    return res.end(JSON.stringify({
+    	"ipaddress": ipaddress,
+    	"language": userLanguage,
+    	"software": userOS,
+    }));
+});
 
 var port = process.env.PORT || 8080;
 app.listen(port,  function () {
